@@ -356,7 +356,7 @@ pub mod pallet {
 			let vote_count = member.vote_count.checked_add(1).ok_or(ArithmeticError::Overflow)?;
 			
 			if vote_count == 10 {
-				member.role = Roles::Verifier;
+				member.role = Roles::Contributor;
 			}
 
 			member.vote_count = vote_count;

@@ -60,15 +60,15 @@ pub fn finalize_vote(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64) 
 ```
 
 ```
-pub fn apply_for_expert_role(origin: OriginFor<T>) -> DispatchResult
+pub fn apply_for_expanded_role(origin: OriginFor<T>) -> DispatchResult
 ```
 
 ```
-pub fn cast_vote_for_expert_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64, vote_cast: bool) -> DispatchResult
+pub fn cast_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64, vote_cast: bool) -> DispatchResult
 ```
 
 ```
-pub fn finalize_vote_for_expert_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64) -> DispatchResult
+pub fn finalize_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64) -> DispatchResult
 ```
 
 ## Local Build and Testing

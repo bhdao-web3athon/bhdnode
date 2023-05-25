@@ -1,4 +1,4 @@
-use crate::{mock::*, Error, Event, VoteType, VoteStatus, Vote};
+use crate::{mock::*, Error, Event, VoteType, VoteStatus, Vote,Roles};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
@@ -157,6 +157,94 @@ fn it_votes_on_document() {
 
 		assert_eq!(BhdaoModule::get_vote((VoteType::Verification,1)),Some(Vote{yes_votes: 1, no_votes: 2,start: 1100, end:2100,status: VoteStatus::Failed }));
 
+	});
+}
+
+#[test]
+fn it_votes_for_expanded_role() {
+	new_test_ext().execute_with(|| {
+		// Go past genesis block so events get deposited
+		System::set_block_number(1);
+
+		assert_eq!(BhdaoModule::upload_uid_count(),0u64);
+
+		// Add Contributor 1
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),1,2,b"Contributor1".to_vec()));
+
+		// Add four experts 2,3,4,5
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),2,4,b"Expert1".to_vec()));
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),3,4,b"Expert2".to_vec()));
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),4,4,b"Expert3".to_vec()));
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),5,4,b"Expert4".to_vec()));
+
+
+		
+		// Add three verifiers 6,7,8
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),6,3,b"Verifier1".to_vec()));
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),7,3,b"Verifier2".to_vec()));
+		assert_ok!(BhdaoModule::set_membership(RuntimeOrigin::root(),8,3,b"Verifier3".to_vec()));
+
+		// Contributor 1 applies for verifier role
+
+		assert_ok!(BhdaoModule::apply_for_expanded_role(RuntimeOrigin::signed(1),Roles::Verifier));
+
+		// Check if the vote is initialized
+
+		assert_eq!(BhdaoModule::role_application_uid_count(),1);
+
+		assert_eq!(BhdaoModule::get_vote((VoteType::CuratorVerification,1)),Some(Vote{yes_votes: 0, no_votes: 0,start: 1, end:1001,status: VoteStatus::InProgress }));
+		
+		// Member 6 casts vote at block 200
+
+		run_to_block(200);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(6),VoteType::CuratorVerification,1,true));
+
+		// Member 7 casts vote at block 1600
+
+		run_to_block(600);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(7),VoteType::CuratorVerification,1,true));
+
+		// Member 8 casts vote at block 2000
+
+		run_to_block(900);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(8),VoteType::CuratorVerification,1,false));
+
+		// Finalize the vote
+
+		run_to_block(1100);
+		assert_ok!(BhdaoModule::finalize_vote_for_expanded_role(RuntimeOrigin::signed(1),VoteType::CuratorVerification,1));
+
+		// Check if the Vote passed
+
+		assert_eq!(BhdaoModule::get_vote((VoteType::CuratorVerification,1)),Some(Vote{yes_votes: 2, no_votes: 1,start: 1, end:1001,status: VoteStatus::Passed }));
+
+		// Check if CuratorCouncilApproval voting started 
+
+		assert_eq!(BhdaoModule::get_vote((VoteType::CuratorCouncilApproval,1)),Some(Vote{yes_votes: 0, no_votes: 0,start: 1100, end:2100,status: VoteStatus::InProgress }));
+
+		// Member 2 casts vote at block 200
+
+		run_to_block(1400);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(2),VoteType::CuratorCouncilApproval,1,true));
+
+		// Member 3 casts vote at block 1700
+
+		run_to_block(1700);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(3),VoteType::CuratorCouncilApproval,1,true));
+
+		// Member 4 casts vote at block 2000
+
+		run_to_block(2000);
+		assert_ok!(BhdaoModule::cast_vote_for_expanded_role(RuntimeOrigin::signed(4),VoteType::CuratorCouncilApproval,1,true));
+
+		// Finalize the vote
+
+		run_to_block(2200);
+		assert_ok!(BhdaoModule::finalize_vote_for_expanded_role(RuntimeOrigin::signed(1),VoteType::CuratorCouncilApproval,1));
+
+		// Check if Vote passed
+
+		assert_eq!(BhdaoModule::get_vote((VoteType::CuratorCouncilApproval,1)),Some(Vote{yes_votes: 3, no_votes: 0,start: 1100, end:2100,status: VoteStatus::Passed }));
 	});
 }
 

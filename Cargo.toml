@@ -2,7 +2,6 @@
 members = [
     "node",
     "pallets/bhdao",
-    "pallets/ocw",
     "pallets/nft",
     "runtime",
 ]

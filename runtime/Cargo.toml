@@ -50,7 +50,6 @@ frame-system-benchmarking = { version = "4.0.0-dev", default-features = false, g
 
 # Local Dependencies
 pallet-bhdao = { version = "4.0.0-dev", default-features = false, path = "../pallets/bhdao" }
-pallet-ocw = { version = "4.0.0-dev", default-features = false, path = "../pallets/ocw" }
 pallet-nft = { version = "4.0.0-dev", default-features = false, path = "../pallets/nft" }
 
 [build-dependencies]
@@ -76,7 +75,6 @@ std = [
 	"pallet-sudo/std",
 	"pallet-bhdao/std",
 	"pallet-nft/std",
-	"pallet-ocw/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
@@ -102,7 +100,6 @@ runtime-benchmarks = [
 	"pallet-balances/runtime-benchmarks",
 	"pallet-grandpa/runtime-benchmarks",
 	"pallet-bhdao/runtime-benchmarks",
-	"pallet-ocw/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
@@ -116,7 +113,6 @@ try-runtime = [
 	"pallet-grandpa/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-bhdao/try-runtime",
-	"pallet-ocw/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
 ]

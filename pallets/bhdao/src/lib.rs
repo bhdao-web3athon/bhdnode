@@ -520,7 +520,7 @@ pub mod pallet {
 			let mut vote = Self::get_vote((vote_type.clone(),voting_id.clone())).ok_or(Error::<T>::VoteNotFound)?;
 			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(now > vote.end,Error::<T>::VoteStillInProgress);
+			ensure!(now > vote.start && now < vote.end, Error::<T>::VotingWindowNotValid);
 
 			// Check the role
 			if vote_type == VoteType::ExpertVerification || vote_type == VoteType::CuratorVerification {

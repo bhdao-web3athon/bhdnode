@@ -47,7 +47,7 @@ pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
 pub use pallet_bhdao;
-pub use pallet_ocw;
+///pub use pallet_ocw;
 pub use pallet_nft;
 
 /// An index to a block.
@@ -280,72 +280,6 @@ impl pallet_nft::Config for Runtime {
 	type Balance = Balance;
 }
 
-parameter_types! {
-	pub const GracePeriod: BlockNumber = 3;
-	pub const UnsignedInterval: BlockNumber = 3;
-	pub const UnsignedPriority: BlockNumber = 3;
-}
-
-impl pallet_ocw::Config for Runtime {
-	type AuthorityId = pallet_ocw::crypto::TestAuthId;
-	type RuntimeEvent = RuntimeEvent;
-	type GracePeriod = GracePeriod;
-	type UnsignedInterval = UnsignedInterval;
-	type UnsignedPriority = UnsignedPriority;
-	type MaxPrices = ConstU32<MAX_PRICE>;
-}
-
-impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
-where
-	RuntimeCall: From<LocalCall>,
-{
-	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-		call: RuntimeCall,
-		public: <Signature as sp_runtime::traits::Verify>::Signer,
-		account: AccountId,
-		index: Index,
-	) -> Option<(RuntimeCall, <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload)> {
-		let period = BlockHashCount::get() as u64;
-		let current_block = System::block_number()
-			.saturated_into::<u64>()
-			.saturating_sub(1);
-		let tip = 0;
-		let extra: SignedExtra = (
-			frame_system::CheckNonZeroSender::<Runtime>::new(),
-			frame_system::CheckSpecVersion::<Runtime>::new(),
-			frame_system::CheckTxVersion::<Runtime>::new(),
-			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
-			frame_system::CheckNonce::<Runtime>::from(index),
-			frame_system::CheckWeight::<Runtime>::new(),
-			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
-		);
-
-		let raw_payload = SignedPayload::new(call, extra)
-			.map_err(|e| {
-				log::warn!("Unable to create signed payload: {:?}", e);
-			})
-			.ok()?;
-		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
-		let address = account;
-		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (sp_runtime::MultiAddress::Id(address), signature.into(), extra)))
-	}
-}
-
-impl frame_system::offchain::SigningTypes for Runtime {
-	type Public = <Signature as sp_runtime::traits::Verify>::Signer;
-	type Signature = Signature;
-}
-
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
-where
-	RuntimeCall: From<C>,
-{
-	type OverarchingCall = RuntimeCall;
-	type Extrinsic = UncheckedExtrinsic;
-}
-
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -363,7 +297,6 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		BhdaoModule: pallet_bhdao,
-		OcwModule: pallet_ocw::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 		NftModule: pallet_nft,
 	}
 );

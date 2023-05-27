@@ -20,6 +20,7 @@ pub mod pallet {
 		,ArithmeticError,FixedPointOperand,};
 	use sp_std::vec::Vec;
 	use sp_std::{fmt::Debug,cmp::{Eq, PartialEq}};
+	use sp_runtime::SaturatedConversion;
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
@@ -157,6 +158,8 @@ pub mod pallet {
 		NotAllowedToTransfer,
 		/// Royalties Should Sum Up To 10000
 		RoyaltiesShouldSumUpTo10000,
+		/// Different Lengths of Input Vectors
+		DifferentLengthInputVectors,
 	}
 
 
@@ -173,16 +176,40 @@ pub mod pallet {
 			//ensure!(to != &T::AccountId::default(), Error::<T>::ZeroAddress);
 			let tokens_count = Self::get_tokens_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
+			Self::_mint(who.clone(),to,id,amount);
+
 			TotalSupply::<T>::insert(id,amount);
 			TokenURI::<T>::insert(id,uri);
-			Balances::<T>::insert(id,to.clone(),amount);
 			TokensCount::<T>::put(tokens_count);
-			//RoyaltySplit::<T>::insert(id,royalty_split);
-			Self::deposit_event(Event::TokenMinted { to, id, amount });
+			
 			Ok(())
 		}
 
-		#[pallet::call_index(1)]
+		
+		#[pallet::call_index(2)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,4).ref_time())]
+		pub fn mint_batch(origin: OriginFor<T>,tos: Vec<T::AccountId>, id: T::TokenId, amounts: Vec<T::Balance>,uri: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(!Self::token_exists(id),Error::<T>::TokenAlreadyExists);
+			ensure!(tos.len() == amounts.len(),Error::<T>::DifferentLengthInputVectors);
+			let tokens_count = Self::get_tokens_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let mut total_amount: u128 = 0;
+
+
+			for (to, amount) in tos.iter().zip(amounts) {
+				ensure!(!amount.is_zero(), Error::<T>::ZeroAmount);
+				total_amount += amount.saturated_into::<u128>();
+				Self::_mint(who.clone(), to.clone(), id, amount)?;
+			}
+
+			//TotalSupply::<T>::insert(id,total_amount);
+			TokenURI::<T>::insert(id,uri);
+			TokensCount::<T>::put(tokens_count);
+
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,2).ref_time())]
 		pub fn transfer(origin: OriginFor<T>,from: T::AccountId,to: T::AccountId,id: T::TokenId,amount: T::Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -197,7 +224,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(2)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,2).ref_time())]
 		pub fn set_approval_for_all(origin: OriginFor<T>, operator: T::AccountId, approved: bool) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
@@ -237,7 +264,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn _mint(to: T::AccountId) -> DispatchResult {
+		pub fn _mint(from: T::AccountId, to: T::AccountId,id: T::TokenId, amount: T::Balance) -> DispatchResult {
+			Balances::<T>::insert(id,to.clone(),amount);
+			Self::deposit_event(Event::TokenMinted { to, id, amount });		
 			Ok(())
 		}
 

@@ -12,6 +12,23 @@ fn it_works_for_mint_token() {
 
 		assert_ok!(NftModule::mint(RuntimeOrigin::signed(1),1,10,1000,b"Token10".to_vec()));
 		assert_eq!(NftModule::get_tokens_count(),1);
+		assert_eq!(NftModule::balance_of(10,1),1000);
+	});
+}
+
+#[test]
+fn it_works_for_batch_mint() {
+	new_test_ext().execute_with(|| {
+		// Go past genesis block so events get deposited
+		System::set_block_number(1);
+		// Dispatch a signed extrinsic.
+
+		assert_eq!(NftModule::get_tokens_count(),0);
+
+		assert_ok!(NftModule::mint_batch(RuntimeOrigin::signed(1),vec![1,2],10,vec![900,100],b"Token10".to_vec()));
+		assert_eq!(NftModule::get_tokens_count(),1);
+		assert_eq!(NftModule::balance_of(10,1),900);
+		assert_eq!(NftModule::balance_of(10,2),100);
 	});
 }
 

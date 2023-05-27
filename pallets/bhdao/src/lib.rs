@@ -60,6 +60,21 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
+	pub struct Objection<T:Config> {
+		pub objector: T::AccountId,
+		pub hash: Vec<u8>,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct ExpertReview<T:Config> {
+		pub start: T::BlockNumber,
+		pub end: T::BlockNumber,
+		pub objections: Option<Vec<Objection<T>>>,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
 	pub struct Member<T:Config> {
 		pub member_id: u32,
 		pub metadata: Vec<u8>,
@@ -80,8 +95,8 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum UploadStatus {
-		DAOVoteInProgress,
-		DAOVoteSuccessful,
+		QualificationVoteInProgress,
+		VerificationVoteInProgress,
 		UnderExpertReview,
 		SuccessfulExpertReview,
 		CouncilVoteInProgress,
@@ -175,6 +190,16 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_expert_review)]
+	pub(super) type ExpertReviews<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u64,
+		ExpertReview<T>,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_role_application)]
 	pub(super) type ExpertApplication<T:Config> = StorageMap<
 		_,
@@ -213,6 +238,9 @@ pub mod pallet {
 		NewVote{vote_type: VoteType, uid: u64},
 		VoteCast{vote_type: VoteType, uid: u64},
 		VoteEnded{vote_type: VoteType, uid: u64},
+		ExpertReviewStarted{uid: u64},
+		ExpertReviewEnded{uid: u64},
+		ObjectionRaised{uid: u64, who: T::AccountId},
 	}
 
 	// Errors inform users that something went wrong.
@@ -248,6 +276,9 @@ pub mod pallet {
 		WrongRoleApplied,
 		/// Not Eligible For Verifier Role
 		NotEligibleForVerifierRole,
+		/// NotUnderExpertReview
+		NotUnderExpertReview,
+		
 	}
 
 	
@@ -293,7 +324,7 @@ pub mod pallet {
 			let upload = Upload::<T> {
 				creator: who.clone(),
 				hash: hash,
-				status: UploadStatus::DAOVoteInProgress,
+				status: UploadStatus::QualificationVoteInProgress,
 			};
 
 			Uploads::<T>::insert(uid.clone(),upload);
@@ -409,42 +440,30 @@ pub mod pallet {
 						let vote_type = VoteType::Verification;
 
 						Votes::<T>::insert((vote_type.clone(),voting_id.clone()),new_vote);
-						upload.status = UploadStatus::UnderExpertReview;
+						upload.status = UploadStatus::VerificationVoteInProgress;
 						Uploads::<T>::insert(voting_id.clone(),&upload);
 
 						Self::deposit_event(Event::NewVote { vote_type: vote_type,uid: voting_id});
 					} else if vote_type == VoteType::Verification  {
 						let mut upload = Self::get_upload(voting_id.clone()).ok_or(Error::<T>::UploadNotFound)?;
-						upload.status = UploadStatus::Verified;
+						//Changes
+						//upload.status = UploadStatus::Verified;
+						upload.status = UploadStatus::UnderExpertReview;
 						Uploads::<T>::insert(voting_id.clone(),&upload);
-						let exist = Approved::<T>::exists();
+
+						let now = <frame_system::Pallet<T>>::block_number();
+
+						let end = now + T::VotingWindow::get().into();
+
+						let expert_review = ExpertReview::<T> {
+							start: now,
+							end: end,
+							objections: None,
+						};
+
+						ExpertReviews::<T>::insert(voting_id.clone(),&expert_review);
+						Self::deposit_event(Event::ExpertReviewStarted { uid: voting_id});
 						
-
-						match exist {
-							true => {
-								let mut temp = Approved::<T>::get();
-								temp.push(upload.hash);
-								Approved::<T>::put(temp);
-								let creator_address = upload.creator.clone();
-								let mut creator = Self::get_member(creator_address.clone()).ok_or(Error::<T>::NotAMember)?;
-
-								let approved_contributions = creator.approved_contributions.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-
-								if approved_contributions == 1 && creator.role == Roles::Qualifier {
-									creator.role = Roles::Verifier;
-								}
-
-								creator.approved_contributions = approved_contributions;
-
-								Members::<T>::insert(creator_address.clone(),&creator);
-							},
-							false => {
-								let mut temp = Vec::new();
-								temp.push(upload.hash);
-								Approved::<T>::put(temp);
-							}
-						}
-
 					}
 				},
 				false => {
@@ -664,6 +683,94 @@ pub mod pallet {
 			MembersCount::<T>::put(uid.clone());
 
 			Self::deposit_event(Event::MemberAdded { who: new_member, uid });
+
+			Ok(())
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1).ref_time())]
+		pub fn raise_expert_objection(origin: OriginFor<T>, upload_id: u64, reason: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			// Check if member
+			let mut member = Self::get_member(who.clone()).ok_or(Error::<T>::NotAMember)?;
+			ensure!(member.role == Roles::Expert,Error::<T>::NotAnExpert);
+
+			let upload = Self::get_upload(upload_id.clone()).ok_or(Error::<T>::UploadNotFound)?;
+
+			ensure!(upload.status == UploadStatus::UnderExpertReview,Error::<T>::NotUnderExpertReview);
+
+			let objection = Objection::<T> {
+				objector: who.clone(),
+				hash: reason,
+			};
+
+			let mut expert_review = Self::get_expert_review(upload_id.clone()).ok_or(Error::<T>::NotUnderExpertReview)?;
+
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > expert_review.start && now < expert_review.end, Error::<T>::VotingWindowNotValid);
+
+			let mut object1 = expert_review.objections.clone();
+
+			match object1 {
+				Some(mut object1) => {
+					object1.push(objection);
+					expert_review.objections = Some(object1);
+				} ,
+				None => {
+					let mut obj1 = Vec::new();
+					obj1.push(objection);
+					expert_review.objections = Some(obj1);
+				},
+			}
+
+			ExpertReviews::<T>::insert(upload_id.clone(),expert_review);
+			Self::deposit_event(Event::ObjectionRaised {  uid: upload_id, who:  who});
+
+			Ok(())
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1).ref_time())]
+		pub fn finalize_expert_review(origin: OriginFor<T>, upload_id: u64, reason: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			// Check if member
+			let member = Self::get_member(who.clone()).ok_or(Error::<T>::NotAMember)?;
+			// Check if the vote exists
+			let mut expert_review = Self::get_expert_review(upload_id.clone()).ok_or(Error::<T>::NotUnderExpertReview)?;
+			let mut upload = Self::get_upload(upload_id.clone()).ok_or(Error::<T>::UploadNotFound)?;
+			
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > expert_review.end,Error::<T>::VoteStillInProgress);
+
+			let object1 = expert_review.objections;
+
+			match object1 {
+				Some(object1) => {
+					upload.status = UploadStatus::Rejected;
+					Uploads::<T>::insert(upload_id.clone(),&upload);
+				} ,
+				None => {
+					upload.status = UploadStatus::Verified;
+					Uploads::<T>::insert(upload_id.clone(),&upload);
+					// Move to finalize_expert_review
+					let exist = Approved::<T>::exists();
+						
+
+					match exist {
+						true => {
+							let mut temp = Approved::<T>::get();
+							temp.push(upload.hash);
+							Approved::<T>::put(temp);
+						},
+						false => {
+							let mut temp = Vec::new();
+							temp.push(upload.hash);
+							Approved::<T>::put(temp);
+						}
+					};
+		
+				},
+			};
 
 			Ok(())
 		}

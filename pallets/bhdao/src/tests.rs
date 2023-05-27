@@ -1,4 +1,4 @@
-use crate::{mock::*, Error, Event, VoteType, VoteStatus, Vote,Roles};
+use crate::{mock::*, Error, Event, VoteType, VoteStatus, Vote, Roles, Upload, UploadStatus};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
@@ -146,16 +146,20 @@ fn it_votes_on_document() {
 		// Member 8 casts vote at block 2000
 
 		run_to_block(2000);
-		assert_ok!(BhdaoModule::cast_vote(RuntimeOrigin::signed(8),VoteType::Verification,1,false));
+		assert_ok!(BhdaoModule::cast_vote(RuntimeOrigin::signed(8),VoteType::Verification,1,true));
 
 		// Finalize The Vote
 
 		run_to_block(2200);
 		assert_ok!(BhdaoModule::finalize_vote(RuntimeOrigin::signed(1),VoteType::Verification,1));
 
-		// Check if Vote failed
+		// Check if Vote passed
 
-		assert_eq!(BhdaoModule::get_vote((VoteType::Verification,1)),Some(Vote{yes_votes: 1, no_votes: 2,start: 1100, end:2100,status: VoteStatus::Failed }));
+		assert_eq!(BhdaoModule::get_vote((VoteType::Verification,1)),Some(Vote{yes_votes: 2, no_votes: 1,start: 1100, end:2100,status: VoteStatus::Passed }));
+
+		// Check the upload status
+
+		assert_eq!(BhdaoModule::get_upload(1),Some(Upload{creator: 1, hash: b"Doc1".to_vec(), status: UploadStatus::UnderExpertReview}));
 
 	});
 }

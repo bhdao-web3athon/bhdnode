@@ -16,12 +16,12 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*,traits::Currency,};
 	use frame_system::pallet_prelude::*;
 	use scale_info::{
 		TypeInfo,
 	};
-	use sp_runtime::ArithmeticError;
+	use sp_runtime::{ArithmeticError,traits::{CheckedAdd,One}};
 	use sp_std::{
 		vec::Vec,
 		collections::vec_deque::VecDeque,
@@ -29,6 +29,21 @@ pub mod pallet {
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
+
+	type BalanceOf<T> = <T as pallet_nft::Config>::Balance;
+	type TokenIdOf<T> = <T as pallet_nft::Config>::TokenId;
+
+	#[pallet::type_value]
+	pub fn ContributorTokenShare<T: Config>() -> TokenIdOf<T>
+	{
+		90u128token_id.try_into().ok().unwrap()
+	}
+
+	#[pallet::type_value]
+	pub fn DAOTokenShare<T: Config>() -> TokenIdOf<T>
+	{
+		10u128token_id.try_into().ok().unwrap()
+	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
@@ -133,7 +148,7 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_nft::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
@@ -161,12 +176,16 @@ pub mod pallet {
 	pub(super) type UploadCount<T> = StorageValue<_, u64,ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn token_uid_count)]
+	pub(super) type TokenCount<T> = StorageValue<_, TokenIdOf<T>,ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn role_application_uid_count)]
 	pub(super) type ApplicationCount<T> = StorageValue<_, u64,ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_approved)]
-	pub(super) type Approved<T> = StorageValue<_, Vec<Vec<u8>>,ValueQuery>;
+	pub(super) type Approved<T> = StorageValue<_, Vec<TokenIdOf<T>>,ValueQuery>;
 
 
 	#[pallet::storage]
@@ -754,17 +773,18 @@ pub mod pallet {
 					Uploads::<T>::insert(upload_id.clone(),&upload);
 					// Move to finalize_expert_review
 					let exist = Approved::<T>::exists();
-						
+					let token_id = Self::token_uid_count().checked_add(&One::one()).ok_or(ArithmeticError::Overflow)?;
+					let tuid: TokenIdOf<T> = token_id.try_into().ok().unwrap();
 
 					match exist {
 						true => {
 							let mut temp = Approved::<T>::get();
-							temp.push(upload.hash);
+							temp.push(tuid);
 							Approved::<T>::put(temp);
 						},
 						false => {
-							let mut temp = Vec::new();
-							temp.push(upload.hash);
+							let mut temp: Vec<TokenIdOf<T>> = Vec::new();
+							temp.push(tuid);
 							Approved::<T>::put(temp);
 						}
 					};

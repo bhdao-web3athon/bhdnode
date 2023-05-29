@@ -23,6 +23,7 @@ pub mod pallet {
 	};
 	use sp_runtime::{ArithmeticError,traits::{CheckedAdd,One}};
 	use sp_std::{
+		vec,
 		vec::Vec,
 		collections::vec_deque::VecDeque,
 	};
@@ -34,15 +35,15 @@ pub mod pallet {
 	type TokenIdOf<T> = <T as pallet_nft::Config>::TokenId;
 
 	#[pallet::type_value]
-	pub fn ContributorTokenShare<T: Config>() -> TokenIdOf<T>
+	pub fn ContributorTokenShare<T: Config>() -> BalanceOf<T>
 	{
-		90u128token_id.try_into().ok().unwrap()
+		90u128.try_into().ok().unwrap()
 	}
 
 	#[pallet::type_value]
-	pub fn DAOTokenShare<T: Config>() -> TokenIdOf<T>
+	pub fn DAOTokenShare<T: Config>() -> BalanceOf<T>
 	{
-		10u128token_id.try_into().ok().unwrap()
+		10u128.try_into().ok().unwrap()
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
@@ -186,6 +187,18 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_approved)]
 	pub(super) type Approved<T> = StorageValue<_, Vec<TokenIdOf<T>>,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_contributor_share)]
+	pub(super) type ContributorShare<T> = StorageValue<_, BalanceOf<T>,ValueQuery,ContributorTokenShare<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_dao_share)]
+	pub(super) type DAOShare<T> = StorageValue<_, BalanceOf<T>,ValueQuery,DAOTokenShare<T>>;
+
+	//#[pallet::storage]
+	//#[pallet::getter(fn get_dao_wallet)]
+	//pub(super) type DAOWalletAccount<T> = StorageValue<_, T::AccountId,OptionQuery,DAOWallet<T>>;
 
 
 	#[pallet::storage]
@@ -750,8 +763,8 @@ pub mod pallet {
 
 		#[pallet::call_index(9)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1).ref_time())]
-		pub fn finalize_expert_review(origin: OriginFor<T>, upload_id: u64, reason: Vec<u8>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+		pub fn finalize_expert_review(origin: OriginFor<T>, upload_id: u64) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
 			// Check if member
 			let member = Self::get_member(who.clone()).ok_or(Error::<T>::NotAMember)?;
 			// Check if the vote exists
@@ -775,6 +788,10 @@ pub mod pallet {
 					let exist = Approved::<T>::exists();
 					let token_id = Self::token_uid_count().checked_add(&One::one()).ok_or(ArithmeticError::Overflow)?;
 					let tuid: TokenIdOf<T> = token_id.try_into().ok().unwrap();
+					let share1 = Self::get_contributor_share();
+					let share2 = Self::get_dao_share();
+
+					pallet_nft::Pallet::<T>::mint_batch(origin.clone(),vec![upload.creator,who.clone()],tuid,vec![share1,share2],upload.hash).ok();
 
 					match exist {
 						true => {

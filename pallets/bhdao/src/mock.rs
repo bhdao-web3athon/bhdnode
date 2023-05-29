@@ -18,6 +18,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		BhdaoModule: pallet_bhdao,
+		NftModule: pallet_nft,
 	}
 );
 
@@ -53,6 +54,14 @@ pub const VOTING_WINDOW: u32 = 1000;
 impl pallet_bhdao::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type VotingWindow = ConstU32<VOTING_WINDOW>;
+}
+
+pub type Balance = u128;
+
+impl pallet_nft::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type TokenId = u128;
+	type Balance = Balance;
 }
 
 pub fn run_to_block(n: u64) {

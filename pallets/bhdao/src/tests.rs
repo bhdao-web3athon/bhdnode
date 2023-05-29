@@ -161,6 +161,15 @@ fn it_votes_on_document() {
 
 		assert_eq!(BhdaoModule::get_upload(1),Some(Upload{creator: 1, hash: b"Doc1".to_vec(), status: UploadStatus::UnderExpertReview}));
 
+		// Assume no expert objection
+		run_to_block(3300);
+		assert_ok!(BhdaoModule::finalize_expert_review(RuntimeOrigin::signed(1),1));
+
+		// Check the upload status
+
+		assert_eq!(BhdaoModule::get_upload(1),Some(Upload{creator: 1, hash: b"Doc1".to_vec(), status: UploadStatus::Verified}));
+
+
 	});
 }
 

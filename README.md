@@ -22,9 +22,13 @@ DAO Membership is multi-tiered
 ```
 
 Qualifier : General Members who vote on documents and proposals.
+
 Contributor : Tier-2 members who contribute documents to the DAO that are evaluated by the full membership.
+
 Verifier : Tier-3 long-standing members of DAO who perform verification after they are voted on by general membership.
+
 Expert : Experts from different field who make sure that the documents are authentic, legal etc. They can vote down the documents if they are not upto the standard.
+
 Collector : Institutions and collectors.
 
 Uploaded Document Struct

@@ -12,6 +12,7 @@ DAO Membership is multi-tiered
 #[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Roles {
+		None = 0,
 		Qualifier = 1,
 		Contributor = 2,
 		Verifier = 3,
@@ -69,6 +70,14 @@ pub fn cast_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, vo
 
 ```
 pub fn finalize_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64) -> DispatchResult
+```
+
+```
+pub fn raise_expert_objection(origin: OriginFor<T>, upload_id: u64, reason: Vec<u8>) -> DispatchResult
+```
+
+```
+pub fn finalize_expert_review(origin: OriginFor<T>, upload_id: u64) -> DispatchResult
 ```
 
 ## Local Build and Testing

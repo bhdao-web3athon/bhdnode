@@ -1,6 +1,6 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY,
+	SystemConfig, WASM_BINARY, BhdaoModuleConfig,
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -56,6 +56,10 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				],

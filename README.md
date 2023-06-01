@@ -95,6 +95,7 @@ curl https://getsubstrate.io/ -sSf | bash -s - --fast
 ### Clone The Repository
 
 ```
+git clone https://github.com/bhdao-web3athon/bhdnode
 ```
 
 ### Build the node and run in dev mode

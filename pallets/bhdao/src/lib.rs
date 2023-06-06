@@ -789,9 +789,8 @@ pub mod pallet {
 					let token_id = Self::token_uid_count().checked_add(&One::one()).ok_or(ArithmeticError::Overflow)?;
 					let tuid: TokenIdOf<T> = token_id.try_into().ok().unwrap();
 					let share1 = Self::get_contributor_share();
-					let share2 = Self::get_dao_share();
 
-					pallet_nft::Pallet::<T>::mint_batch(origin.clone(),vec![upload.creator,who.clone()],tuid,vec![share1,share2],upload.hash).ok();
+					pallet_nft::Pallet::<T>::mint(origin.clone(),upload.creator,tuid,share1,upload.hash).ok();
 
 					match exist {
 						true => {

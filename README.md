@@ -12,6 +12,7 @@ DAO Membership is multi-tiered
 #[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Roles {
+		None = 0,
 		Qualifier = 1,
 		Contributor = 2,
 		Verifier = 3,
@@ -21,9 +22,13 @@ DAO Membership is multi-tiered
 ```
 
 Qualifier : General Members who vote on documents and proposals.
+
 Contributor : Tier-2 members who contribute documents to the DAO that are evaluated by the full membership.
+
 Verifier : Tier-3 long-standing members of DAO who perform verification after they are voted on by general membership.
+
 Expert : Experts from different field who make sure that the documents are authentic, legal etc. They can vote down the documents if they are not upto the standard.
+
 Collector : Institutions and collectors.
 
 Uploaded Document Struct
@@ -71,6 +76,14 @@ pub fn cast_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, vo
 pub fn finalize_vote_for_expanded_role(origin: OriginFor<T>, vote_type: VoteType, voting_id: u64) -> DispatchResult
 ```
 
+```
+pub fn raise_expert_objection(origin: OriginFor<T>, upload_id: u64, reason: Vec<u8>) -> DispatchResult
+```
+
+```
+pub fn finalize_expert_review(origin: OriginFor<T>, upload_id: u64) -> DispatchResult
+```
+
 ## Local Build and Testing
 
 ### Install Rust Environment
@@ -82,6 +95,7 @@ curl https://getsubstrate.io/ -sSf | bash -s - --fast
 ### Clone The Repository
 
 ```
+git clone https://github.com/bhdao-web3athon/bhdnode
 ```
 
 ### Build the node and run in dev mode
